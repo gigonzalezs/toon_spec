@@ -45,6 +45,10 @@ public final class ToonTokener {
       consumeLine();
       return readArray(headerLine, current.indent + INDENT_SIZE);
     }
+    if (!current.trimmed.contains(":") || isQuoted(current.trimmed)) {
+      consumeLine();
+      return parsePrimitive(current.trimmed, current.lineNumber, current.indent + 1);
+    }
     return readObject(current.indent);
   }
 
