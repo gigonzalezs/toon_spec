@@ -1,4 +1,4 @@
-package org.toon.grammar;
+package org.toonjava.grammar;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 

@@ -1,4 +1,4 @@
-package org.toon;
+package org.toonjava;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -9,8 +9,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
-import org.toon.grammar.ToonLexer;
-import org.toon.grammar.ToonParser;
+import org.toonjava.grammar.ToonLexer;
+import org.toonjava.grammar.ToonParser;
 
 /**
  * Tokener sencillo que envuelve el parser ANTLR de encabezados para transformar texto TOON en

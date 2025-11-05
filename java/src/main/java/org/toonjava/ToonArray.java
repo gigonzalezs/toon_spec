@@ -1,4 +1,4 @@
-package org.toon;
+package org.toonjava;
 
 import java.util.ArrayList;
 import java.util.Collections;

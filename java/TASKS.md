@@ -4,7 +4,7 @@ Este plan asume ejecución dentro de `./java` y sigue la arquitectura descrita e
 
 1. Preparación del entorno (completado)
    - Crear proyecto Gradle sin dependencias runtime; añadir carpetas standard de un proyecti Gradle. añadir plugin ANTLR y JUnit 5.
-   - Configurar estructura de paquetes `org.toon` y directorio `org.toon.grammar` para código generado.
+   - Configurar estructura de paquetes `org.toonjava` y directorio `org.toonjava.grammar` para código generado.
    - Integrar verificación de estilo básica (spotless/formatter opcional).
 
 2. Gramática TOON (completado)

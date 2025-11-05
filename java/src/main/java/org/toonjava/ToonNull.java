@@ -1,4 +1,4 @@
-package org.toon;
+package org.toonjava;
 
 /**
  * Centinela que representa un valor {@code null} explícito dentro de un {@link ToonObject} o

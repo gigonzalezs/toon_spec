@@ -1,7 +1,7 @@
 grammar Toon;
 
 @header {
-package org.toon.grammar;
+package org.toonjava.grammar;
 }
 
 /**

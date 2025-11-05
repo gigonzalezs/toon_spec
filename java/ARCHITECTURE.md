@@ -10,16 +10,16 @@ Visión general
 
 Paquetes y módulos
 ------------------
-- Paquete raíz único `org.toon` (similar al `org.json` original).
-- Archivos generados por ANTLR ubicados en `org.toon.grammar` pero expuestos mediante adaptadores del paquete raíz para mantener la interfaz minimalista.
+- Paquete raíz único `org.toonjava` (similar al `org.json` original).
+- Archivos generados por ANTLR ubicados en `org.toonjava.grammar` pero expuestos mediante adaptadores del paquete raíz para mantener la interfaz minimalista.
 - Estructura mínima esperada:
-  - `org.toon.ToonObject`
-  - `org.toon.ToonArray`
-  - `org.toon.ToonTokener` (envoltorio sobre lexer/parser ANTLR)
-  - `org.toon.ToonEncoder`
-  - `org.toon.ToonDecoder`
-  - `org.toon.ToonWriter` / `org.toon.ToonStringer`
-  - `org.toon.ToonException`
+  - `org.toonjava.ToonObject`
+  - `org.toonjava.ToonArray`
+  - `org.toonjava.ToonTokener` (envoltorio sobre lexer/parser ANTLR)
+  - `org.toonjava.ToonEncoder`
+  - `org.toonjava.ToonDecoder`
+  - `org.toonjava.ToonWriter` / `org.toonjava.ToonStringer`
+  - `org.toonjava.ToonException`
 
 Modelo de datos
 ---------------

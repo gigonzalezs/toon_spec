@@ -1,4 +1,4 @@
-package org.toon;
+package org.toonjava;
 
 /** Excepción unchecked para errores de parseo y validación en TOON. */
 public class ToonException extends RuntimeException {

@@ -1,4 +1,4 @@
-package org.toon;
+package org.toonjava;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;

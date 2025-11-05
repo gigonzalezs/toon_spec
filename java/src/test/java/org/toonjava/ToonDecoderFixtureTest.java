@@ -1,4 +1,4 @@
-package org.toon;
+package org.toonjava;
 
 import static org.junit.jupiter.api.Assertions.*;
 

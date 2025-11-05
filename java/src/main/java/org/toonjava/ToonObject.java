@@ -1,4 +1,4 @@
-package org.toon;
+package org.toonjava;
 
 import java.util.Collection;
 import java.util.Collections;

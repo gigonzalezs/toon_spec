@@ -5,7 +5,7 @@ Que es TOON:
 TOON es Token-Oriented Object Notation (TOON), formato compacto y legible orientado a pasar datos estructurados a LLMs reduciendo el uso de tokens
 
 Arquitectura:
-Estructura de paquetes ligera: org.json se organiza en un único paquete plano (org.json) donde conviven todas las clases públicas principales. No hay submódulos ni jerarquía profunda; esto facilita entender dependencias y reduce el coste de mantenimiento. Para toon-java, replicarías este layout con clases como ToonObject, ToonArray, ToonTokener, etc., todas en un paquete simple (org.toon), evitando división artificial en encoder/decoder hasta que la funcionalidad lo requiera.
+Estructura de paquetes ligera: org.json se organiza en un único paquete plano (org.json) donde conviven todas las clases públicas principales. No hay submódulos ni jerarquía profunda; esto facilita entender dependencias y reduce el coste de mantenimiento. Para toon-java, replicarías este layout con clases como ToonObject, ToonArray, ToonTokener, etc., todas en un paquete simple (org.toonjava), evitando división artificial en encoder/decoder hasta que la funcionalidad lo requiera.
 
 Modelo de datos centrado en contenedores dinámicos:
 
