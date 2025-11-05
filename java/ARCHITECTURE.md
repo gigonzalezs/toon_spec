@@ -45,6 +45,7 @@ Gramática y ANTLR
 - La gramática ABNF de `SPEC.md` se transpila a un `.g4` maestro.  
 - Se genera `ToonLexer` y `ToonParser` en build-time (Gradle/Maven + plugin ANTLR).  
 - `ToonTokener` expone una API manual (métodos `nextValue()`, `nextObject()`, etc.) para que el resto del código no dependa directamente de ANTLR.
+- El encabezado normativo (SPEC §6) está mapeado 1:1 en `src/main/antlr/org/toon/Toon.g4`; los tokens y reglas mantienen los mismos nombres lógicos que en el ABNF (`bracket-seg`, `fields-seg`, `delimsym`, etc.) para facilitar el rastreo de la spec.
 
 Errores y validación
 --------------------
