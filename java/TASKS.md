@@ -2,17 +2,17 @@ Plan de trabajo para toon-java
 ==============================
 Este plan asume ejecución dentro de `./java` y sigue la arquitectura descrita en `PROJECT_OVERVIEW.md` y `ARCHITECTURE.md`. Cada bloque puede ejecutarse de forma incremental; marcar como completado cuando corresponda.
 
-1. Preparación del entorno
+1. Preparación del entorno (completado)
    - Crear proyecto Gradle sin dependencias runtime; añadir carpetas standard de un proyecti Gradle. añadir plugin ANTLR y JUnit 5.
    - Configurar estructura de paquetes `org.toon` y directorio `org.toon.grammar` para código generado.
    - Integrar verificación de estilo básica (spotless/formatter opcional).
 
-2. Gramática TOON
+2. Gramática TOON (completado)
    - Extraer la gramática ABNF de `SPEC.md` y convertirla a `Toon.g4`.
    - Generar `ToonLexer` y `ToonParser`; confirmar que compila y produce árbol parseable para ejemplos oficiales.
    - Documentar mapeo ABNF → ANTLR en comentarios y en `ARCHITECTURE.md` (si no existe ya).
 
-3. Adaptador de parser (`ToonTokener`)
+3. Adaptador de parser (`ToonTokener`) (completado)
    - Implementar clase wrapper que consuma el parser ANTLR y exponga métodos `nextValue`, `nextObject`, `nextArray`, etc.
    - Gestionar tracking de posición (línea/columna) para errores.
    - Añadir pruebas unitarias sobre el tokenizer usando snippets simples.
