@@ -33,5 +33,10 @@ tasks.test {
 spotless {
     java {
         googleJavaFormat()
+        targetExclude('build/generated-src/**/*.java')
     }
+}
+
+tasks.named('spotlessJava').configure {
+    dependsOn tasks.named('generateGrammarSource')
 }

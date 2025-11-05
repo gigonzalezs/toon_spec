@@ -38,5 +38,9 @@
     "json",
     "jsonc",
     "yaml"
+  ],
+  "java.configuration.updateBuildConfiguration": "interactive",
+  "java.project.additionalSourcePaths": [
+    "java/build/generated-src/antlr/main"
   ]
 }
