@@ -82,6 +82,7 @@ public final class ToonTokener {
   }
 
   private void readObjectEntries(Map<String, Object> target, int expectedIndent) {
+    boolean allowIndentAdjustment = target.isEmpty();
     while (index < lines.size()) {
       LineInfo line = peekLine();
       if (line.trimmed.isEmpty()) {
@@ -93,7 +94,11 @@ public final class ToonTokener {
         break;
       }
       if (line.indent > expectedIndent) {
-        throw error("Indentación inesperada", line.lineNumber, line.indent + 1);
+        if (allowIndentAdjustment) {
+          expectedIndent = line.indent;
+        } else {
+          throw error("Indentación inesperada", line.lineNumber, line.indent + 1);
+        }
       }
 
       HeaderLine headerLine = parseHeaderLine(line);
@@ -103,8 +108,9 @@ public final class ToonTokener {
               "Los encabezados de array dentro de objetos requieren una clave", line.lineNumber, 1);
         }
         consumeLine();
-        List<Object> array = readArray(headerLine, expectedIndent + INDENT_SIZE);
-        target.put(headerLine.header.key, array);
+        target.put(headerLine.header.key, readArray(headerLine, expectedIndent + INDENT_SIZE));
+        readObjectEntries(target, expectedIndent);
+        allowIndentAdjustment = false;
         continue;
       }
 
@@ -115,6 +121,7 @@ public final class ToonTokener {
       } else {
         target.put(kv.key, parsePrimitive(kv.valueSegment, line.lineNumber, kv.valueColumn));
       }
+      allowIndentAdjustment = false;
     }
   }
 
