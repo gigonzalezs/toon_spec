@@ -164,15 +164,20 @@ public final class ToonTokener {
         continue;
       }
 
-      if (!line.trimmed.startsWith("- ")) {
+      if (!line.trimmed.startsWith("-")) {
         throw error(
             "Se esperaba elemento de array con prefijo '- '", line.lineNumber, line.indent + 1);
       }
 
       consumeLine();
-      String payload = line.trimmed.substring(2).trim();
+      if (line.trimmed.length() > 1 && line.trimmed.charAt(1) != ' ') {
+        throw error(
+            "Se esperaba elemento de array con prefijo '- '", line.lineNumber, line.indent + 1);
+      }
+      String payload = line.trimmed.length() == 1 ? "" : line.trimmed.substring(2).trim();
       if (payload.isEmpty()) {
-        throw error("Elemento de array vacío", line.lineNumber, line.indent + 1);
+        items.add(new LinkedHashMap<>());
+        continue;
       }
 
       HeaderLine nestedHeaderLine = parseHeaderText(payload, line.lineNumber, line.indent + 3);
