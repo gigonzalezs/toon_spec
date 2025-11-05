@@ -19,7 +19,7 @@ class ToonTokenerTest {
     Map<String, Object> object = tokener.nextObject();
 
     assertEquals(4, object.size());
-    assertEquals(123L, object.get("id"));
+    assertEquals(123, object.get("id"));
     assertEquals("Ada Lovelace", object.get("name"));
     assertEquals(Boolean.TRUE, object.get("active"));
     assertEquals(98.5d, object.get("score"));
@@ -84,7 +84,7 @@ class ToonTokenerTest {
     List<Map<String, Object>> users = (List<Map<String, Object>>) object.get("users");
     assertNotNull(users);
     assertEquals(3, users.size());
-    assertEquals(1L, users.get(0).get("id"));
+    assertEquals(1, users.get(0).get("id"));
     assertEquals("Charlie", users.get(2).get("name"));
     assertEquals(Boolean.FALSE, users.get(2).get("active"));
   }
@@ -107,7 +107,7 @@ class ToonTokenerTest {
 
     @SuppressWarnings("unchecked")
     Map<String, Object> first = (Map<String, Object>) items.get(0);
-    assertEquals(1L, first.get("id"));
+    assertEquals(1, first.get("id"));
     assertEquals("Ada", first.get("name"));
     @SuppressWarnings("unchecked")
     List<Object> skills = (List<Object>) first.get("skills");

@@ -463,7 +463,11 @@ public final class ToonTokener {
         if (text.contains(".") || text.contains("e") || text.contains("E")) {
           return Double.parseDouble(text);
         }
-        return Long.parseLong(text);
+        long value = Long.parseLong(text);
+        if (value >= Integer.MIN_VALUE && value <= Integer.MAX_VALUE) {
+          return (int) value;
+        }
+        return value;
       } catch (NumberFormatException ex) {
         throw new ToonException("Número inválido: " + text, line, column, ex);
       }

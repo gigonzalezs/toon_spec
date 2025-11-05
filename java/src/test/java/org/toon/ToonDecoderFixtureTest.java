@@ -81,8 +81,12 @@ class ToonDecoderFixtureTest {
   }
 
   private static String describeMismatch(String displayName, JsonNode expected, Object actual) {
-    return displayName + " -> esperado: " + expected + ", obtenido: " + actual;
+    String actualType = actual.getClass().getSimpleName();
+    String expectedType = expected.getNodeType().toString();
+    return displayName + " -> esperado: " + expected + "(" + expectedType + "), obtenido: " + actual + "(" + actualType
+        + ")";
   }
 
-  private ToonDecoderFixtureTest() {}
+  private ToonDecoderFixtureTest() {
+  }
 }
