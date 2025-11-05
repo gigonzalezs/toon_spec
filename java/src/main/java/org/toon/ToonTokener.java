@@ -13,11 +13,9 @@ import org.toon.grammar.ToonLexer;
 import org.toon.grammar.ToonParser;
 
 /**
- * Tokener simple basado en líneas que envuelve el parser ANTLR de encabezados para construir
- * estructuras básicas (Map/List) a partir de texto TOON.
- *
- * <p>Implementa un subconjunto de la gramática suficiente para los snippets de validación inicial.
- * Se ampliará progresivamente en tareas posteriores.
+ * Tokener sencillo que envuelve el parser ANTLR de encabezados para transformar texto TOON en
+ * estructuras básicas de Java (Map/List). Soporta encabezados con valores inline, arrays tabulares
+ * y objetos multi-línea dentro de arrays.
  */
 public final class ToonTokener {
   private static final Pattern KEY_VALUE_PATTERN = Pattern.compile("([^:]+):(.*)");
@@ -42,10 +40,10 @@ public final class ToonTokener {
       return null;
     }
     LineInfo current = peekLine();
-    if (isArrayHeader(current)) {
-      Header header = parseHeader(current.trimmed, current.lineNumber, current.indent);
+    HeaderLine headerLine = parseHeaderLine(current);
+    if (headerLine != null && headerLine.header.key == null) {
       consumeLine();
-      return readArray(header, current.indent + INDENT_SIZE);
+      return readArray(headerLine, current.indent + INDENT_SIZE);
     }
     return readObject(current.indent);
   }
@@ -65,18 +63,28 @@ public final class ToonTokener {
       throw error("No hay array disponible", currentLineNumber(), 1);
     }
     LineInfo current = peekLine();
-    if (!isArrayHeader(current)) {
-      throw error("Se esperaba encabezado de array", current.lineNumber, current.indent + 1);
+    HeaderLine headerLine = parseHeaderLine(current);
+    if (headerLine == null || headerLine.header.key != null) {
+      throw error("Se esperaba encabezado de array en la posición actual", current.lineNumber, 1);
     }
-    Header header = parseHeader(current.trimmed, current.lineNumber, current.indent);
     consumeLine();
-    return readArray(header, current.indent + INDENT_SIZE);
+    return readArray(headerLine, current.indent + INDENT_SIZE);
   }
 
   private Map<String, Object> readObject(int expectedIndent) {
     Map<String, Object> result = new LinkedHashMap<>();
-    while (hasMoreValues()) {
+    readObjectEntries(result, expectedIndent);
+    return result;
+  }
+
+  private void readObjectEntries(Map<String, Object> target, int expectedIndent) {
+    while (index < lines.size()) {
       LineInfo line = peekLine();
+      if (line.trimmed.isEmpty()) {
+        // Blank lines fuera de arrays: se ignoran.
+        consumeLine();
+        continue;
+      }
       if (line.indent < expectedIndent) {
         break;
       }
@@ -84,111 +92,304 @@ public final class ToonTokener {
         throw error("Indentación inesperada", line.lineNumber, line.indent + 1);
       }
 
-      if (isArrayHeader(line)) {
-        Header header = parseHeader(line.trimmed, line.lineNumber, line.indent);
-        consumeLine();
-        List<Object> array = readArray(header, expectedIndent + INDENT_SIZE);
-        if (header.key == null) {
+      HeaderLine headerLine = parseHeaderLine(line);
+      if (headerLine != null) {
+        if (headerLine.header.key == null) {
           throw error(
               "Los encabezados de array dentro de objetos requieren una clave", line.lineNumber, 1);
         }
-        result.put(header.key, array);
+        consumeLine();
+        List<Object> array = readArray(headerLine, expectedIndent + INDENT_SIZE);
+        target.put(headerLine.header.key, array);
         continue;
       }
 
       consumeLine();
-      Matcher matcher = KEY_VALUE_PATTERN.matcher(line.trimmed);
-      if (!matcher.matches()) {
-        throw error("Se esperaba par clave:valor", line.lineNumber, 1);
-      }
-      String key = matcher.group(1).trim();
-      String valueSegment = matcher.group(2).trim();
-      if (valueSegment.isEmpty()) {
-        Map<String, Object> nested = readObject(expectedIndent + INDENT_SIZE);
-        result.put(key, nested);
+      ParsedKeyValue kv = parseKeyValue(line.trimmed, line.lineNumber, line.indent + 1);
+      if (kv.valueSegment.isEmpty()) {
+        target.put(kv.key, readObject(expectedIndent + INDENT_SIZE));
       } else {
-        Object value =
-            parsePrimitive(valueSegment, line.lineNumber, line.indent + line.raw.indexOf(':') + 2);
-        result.put(key, value);
+        target.put(kv.key, parsePrimitive(kv.valueSegment, line.lineNumber, kv.valueColumn));
       }
     }
-    return result;
   }
 
-  private List<Object> readArray(Header header, int expectedIndent) {
+  private List<Object> readArray(HeaderLine headerLine, int expectedIndent) {
+    Header header = headerLine.header;
     List<Object> items = new ArrayList<>();
-    while (hasMoreValues()) {
+
+    if (!headerLine.inlineSegment.isEmpty()) {
+      if (header.isTabular()) {
+        Map<String, Object> row =
+            parseTabularRow(
+                headerLine.inlineSegment, header, headerLine.lineNumber, headerLine.inlineColumn);
+        items.add(row);
+      } else {
+        List<TokenSlice> tokens =
+            parseDelimitedValues(
+                headerLine.inlineSegment,
+                header.delimiter,
+                headerLine.lineNumber,
+                headerLine.inlineColumn);
+        for (TokenSlice slice : tokens) {
+          items.add(parsePrimitive(slice.text, headerLine.lineNumber, slice.column));
+        }
+      }
+    }
+
+    while (index < lines.size()) {
       LineInfo line = peekLine();
       if (line.indent < expectedIndent) {
         break;
       }
-      if (line.indent > expectedIndent) {
-        throw error("Indentación inesperada en array", line.lineNumber, line.indent + 1);
+      if (line.trimmed.isEmpty()) {
+        throw error(
+            "Las líneas en blanco dentro de arrays no son válidas en modo estricto",
+            line.lineNumber,
+            line.indent + 1);
       }
+
+      if (header.isTabular()) {
+        if (line.indent != expectedIndent) {
+          throw error("Indentación inválida en fila tabular", line.lineNumber, line.indent + 1);
+        }
+        consumeLine();
+        Map<String, Object> row =
+            parseTabularRow(line.trimmed, header, line.lineNumber, line.indent + 1);
+        items.add(row);
+        continue;
+      }
+
       if (!line.trimmed.startsWith("- ")) {
-        throw error("Se esperaba elemento con '- '", line.lineNumber, line.indent + 1);
+        throw error(
+            "Se esperaba elemento de array con prefijo '- '", line.lineNumber, line.indent + 1);
       }
+
       consumeLine();
       String payload = line.trimmed.substring(2).trim();
       if (payload.isEmpty()) {
         throw error("Elemento de array vacío", line.lineNumber, line.indent + 1);
       }
 
-      if (payload.contains("[") && payload.endsWith(":")) {
-        Header nestedHeader = parseHeader(payload, line.lineNumber, line.indent + 2);
-        List<Object> nestedArray = readArray(nestedHeader, expectedIndent + INDENT_SIZE);
-        items.add(nestedArray);
-      } else if (payload.contains(":")) {
-        // objeto en línea dentro del array
-        Matcher matcher = KEY_VALUE_PATTERN.matcher(payload);
-        if (!matcher.matches()) {
-          throw error("Sintaxis de objeto inválida", line.lineNumber, line.indent + 1);
-        }
-        Map<String, Object> inline = new LinkedHashMap<>();
-        String key = matcher.group(1).trim();
-        String valueSegment = matcher.group(2).trim();
-        if (valueSegment.isEmpty()) {
-          Map<String, Object> nested = readObject(expectedIndent + INDENT_SIZE);
-          inline.put(key, nested);
+      HeaderLine nestedHeaderLine = parseHeaderText(payload, line.lineNumber, line.indent + 3);
+      if (nestedHeaderLine != null) {
+        List<Object> nested = readArray(nestedHeaderLine, expectedIndent + INDENT_SIZE);
+        if (nestedHeaderLine.header.key != null) {
+          Map<String, Object> wrapper = new LinkedHashMap<>();
+          wrapper.put(nestedHeaderLine.header.key, nested);
+          items.add(wrapper);
         } else {
-          inline.put(
-              key,
-              parsePrimitive(
-                  valueSegment, line.lineNumber, line.indent + line.raw.indexOf(':') + 2));
+          items.add(nested);
         }
+        continue;
+      }
+
+      if (payload.contains(":")) {
+        Map<String, Object> inline = new LinkedHashMap<>();
+        ParsedKeyValue kv = parseKeyValue(payload, line.lineNumber, line.indent + 3);
+        if (kv.valueSegment.isEmpty()) {
+          inline.put(kv.key, readObject(expectedIndent + INDENT_SIZE));
+        } else {
+          inline.put(kv.key, parsePrimitive(kv.valueSegment, line.lineNumber, kv.valueColumn));
+        }
+        readObjectEntries(inline, expectedIndent + INDENT_SIZE);
         items.add(inline);
       } else {
         items.add(parsePrimitive(payload, line.lineNumber, line.indent + 3));
       }
     }
+
     if (header.length >= 0 && items.size() != header.length) {
       throw error(
           "El encabezado declara " + header.length + " elementos pero se leyeron " + items.size(),
-          currentLineNumber(),
+          headerLine.lineNumber,
           1);
     }
     return items;
   }
 
-  private Header parseHeader(String text, int line, int indent) {
+  private Map<String, Object> parseTabularRow(
+      String rowText, Header header, int line, int startColumn) {
+    List<TokenSlice> slices = parseDelimitedValues(rowText, header.delimiter, line, startColumn);
+    if (slices.size() != header.fields.size()) {
+      throw error(
+          "La fila tabular tiene "
+              + slices.size()
+              + " columnas pero se esperaban "
+              + header.fields.size(),
+          line,
+          startColumn);
+    }
+    Map<String, Object> row = new LinkedHashMap<>();
+    for (int i = 0; i < slices.size(); i++) {
+      TokenSlice slice = slices.get(i);
+      row.put(header.fields.get(i), parsePrimitive(slice.text, line, slice.column));
+    }
+    return row;
+  }
+
+  private ParsedKeyValue parseKeyValue(String text, int line, int startColumn) {
+    Matcher matcher = KEY_VALUE_PATTERN.matcher(text);
+    if (!matcher.matches()) {
+      throw error("Se esperaba par clave:valor", line, startColumn);
+    }
+    String keyToken = matcher.group(1).trim();
+    String valueSegment = matcher.group(2).trim();
+
+    int keyStartIndex = text.indexOf(keyToken);
+    int keyColumn = startColumn + keyStartIndex;
+    String key = decodeKey(keyToken, line, keyColumn);
+
+    int colonIndex = text.indexOf(':');
+    int valueIndex = colonIndex + 1;
+    while (valueIndex < text.length() && Character.isWhitespace(text.charAt(valueIndex))) {
+      valueIndex++;
+    }
+    int valueColumn = startColumn + valueIndex;
+    return new ParsedKeyValue(key, valueSegment, valueColumn);
+  }
+
+  private String decodeKey(String token, int line, int column) {
+    if (isQuoted(token)) {
+      return unescape(token, line, column);
+    }
+    return token;
+  }
+
+  private HeaderLine parseHeaderLine(LineInfo line) {
+    if (!line.trimmed.contains("[") || !line.trimmed.contains("]")) {
+      return null;
+    }
+    return parseHeaderText(line.trimmed, line.lineNumber, line.indent + 1);
+  }
+
+  private HeaderLine parseHeaderText(String text, int lineNumber, int startColumn) {
+    int colonIndex = text.indexOf(':');
+    if (colonIndex < 0) {
+      return null;
+    }
+    String headerSegment = text.substring(0, colonIndex + 1);
+    if (!headerSegment.contains("[") || !headerSegment.contains("]")) {
+      return null;
+    }
+
+    Header header = parseHeaderSegment(headerSegment, lineNumber, startColumn);
+    String inlineSegment = text.substring(colonIndex + 1).trim();
+
+    String tail = text.substring(colonIndex + 1);
+    int offset = 0;
+    while (offset < tail.length() && Character.isWhitespace(tail.charAt(offset))) {
+      offset++;
+    }
+    int inlineColumn = startColumn + colonIndex + 1 + offset;
+    return new HeaderLine(header, inlineSegment, lineNumber, inlineColumn);
+  }
+
+  private Header parseHeaderSegment(String headerText, int line, int startColumn) {
     try {
-      ToonLexer lexer = new ToonLexer(CharStreams.fromString(text));
+      ToonLexer lexer = new ToonLexer(CharStreams.fromString(headerText));
       CommonTokenStream tokens = new CommonTokenStream(lexer);
       ToonParser parser = new ToonParser(tokens);
       ToonParser.HeaderContext ctx = parser.header();
+
       String key = null;
       if (ctx.key() != null) {
         if (ctx.key().UNQUOTED_KEY() != null) {
           key = ctx.key().UNQUOTED_KEY().getText();
         } else {
-          key = unescape(ctx.key().STRING().getText(), line, indent + 1);
+          key = unescape(ctx.key().STRING().getText(), line, startColumn);
         }
       }
-      int length = Integer.parseInt(ctx.bracketSegment().DIGITS().getText());
-      return new Header(key, length);
+
+      String segment = ctx.bracketSegment().getText();
+      int cursor = 1; // omite '['
+      if (segment.charAt(cursor) == '#') {
+        cursor++;
+      }
+      int lengthStart = cursor;
+      while (cursor < segment.length() && Character.isDigit(segment.charAt(cursor))) {
+        cursor++;
+      }
+      int length = Integer.parseInt(segment.substring(lengthStart, cursor));
+
+      char delimiter = ',';
+      if (segment.charAt(cursor) != ']') {
+        delimiter = segment.charAt(cursor);
+      }
+
+      List<String> fields = new ArrayList<>();
+      if (ctx.fieldsSegment() != null) {
+        for (ToonParser.FieldNameContext fieldCtx : ctx.fieldsSegment().fieldName()) {
+          String token;
+          if (fieldCtx.key().UNQUOTED_KEY() != null) {
+            token = fieldCtx.key().UNQUOTED_KEY().getText();
+          } else {
+            token = unescape(fieldCtx.key().STRING().getText(), line, startColumn);
+          }
+          fields.add(token);
+        }
+      }
+      return new Header(key, length, delimiter, List.copyOf(fields));
     } catch (RuntimeException ex) {
-      throw error("Encabezado inválido: " + text, line, indent + 1, ex);
+      throw error("Encabezado inválido: " + headerText.trim(), line, startColumn, ex);
     }
+  }
+
+  private List<TokenSlice> parseDelimitedValues(
+      String text, char delimiter, int line, int startColumn) {
+    List<TokenSlice> tokens = new ArrayList<>();
+    if (text.isEmpty()) {
+      return tokens;
+    }
+    StringBuilder current = new StringBuilder();
+    boolean inQuotes = false;
+    int tokenStart = 0;
+    int i = 0;
+    while (i < text.length()) {
+      char ch = text.charAt(i);
+      if (ch == '\\' && inQuotes) {
+        if (i + 1 >= text.length()) {
+          throw error("Secuencia de escape incompleta", line, startColumn + i);
+        }
+        current.append(ch);
+        i++;
+        current.append(text.charAt(i));
+        i++;
+        continue;
+      }
+      if (ch == '"') {
+        inQuotes = !inQuotes;
+        current.append(ch);
+        i++;
+        continue;
+      }
+      if (ch == delimiter && !inQuotes) {
+        tokens.add(finishToken(current, text, tokenStart, i, startColumn));
+        current.setLength(0);
+        i++;
+        tokenStart = i;
+        continue;
+      }
+      current.append(ch);
+      i++;
+    }
+    if (inQuotes) {
+      throw error("Cadena sin cerrar en lista delimitada", line, startColumn + text.length());
+    }
+    tokens.add(finishToken(current, text, tokenStart, text.length(), startColumn));
+    return tokens;
+  }
+
+  private TokenSlice finishToken(
+      StringBuilder current, String fullText, int tokenStart, int tokenEnd, int startColumn) {
+    String raw = current.toString();
+    int leading = 0;
+    while (leading < raw.length() && Character.isWhitespace(raw.charAt(leading))) {
+      leading++;
+    }
+    String trimmed = raw.substring(leading, raw.length()).trim();
+    int column = startColumn + tokenStart + leading;
+    return new TokenSlice(trimmed, column);
   }
 
   private void skipBlankLines() {
@@ -309,10 +510,6 @@ public final class ToonTokener {
     return sb.toString();
   }
 
-  private static boolean isArrayHeader(LineInfo line) {
-    return line.trimmed.contains("[") && line.trimmed.endsWith(":");
-  }
-
   private static ToonException error(String message, int line, int column) {
     return new ToonException(message, line, column);
   }
@@ -326,10 +523,36 @@ public final class ToonTokener {
   private static final class Header {
     final String key;
     final int length;
+    final char delimiter;
+    final List<String> fields;
 
-    Header(String key, int length) {
+    Header(String key, int length, char delimiter, List<String> fields) {
       this.key = key;
       this.length = length;
+      this.delimiter = delimiter;
+      this.fields = fields;
+    }
+
+    boolean isTabular() {
+      return !fields.isEmpty();
     }
   }
+
+  private static final class HeaderLine {
+    final Header header;
+    final String inlineSegment;
+    final int lineNumber;
+    final int inlineColumn;
+
+    HeaderLine(Header header, String inlineSegment, int lineNumber, int inlineColumn) {
+      this.header = header;
+      this.inlineSegment = inlineSegment;
+      this.lineNumber = lineNumber;
+      this.inlineColumn = inlineColumn;
+    }
+  }
+
+  private record ParsedKeyValue(String key, String valueSegment, int valueColumn) {}
+
+  private record TokenSlice(String text, int column) {}
 }

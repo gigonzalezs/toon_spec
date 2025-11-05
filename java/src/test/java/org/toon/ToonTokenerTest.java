@@ -26,8 +26,21 @@ class ToonTokenerTest {
   }
 
   @Test
+  void parsesInlinePrimitiveArrayWithinObject() {
+    String source = "tags[3]: admin,ops,\"dev,sec\"";
+
+    ToonTokener tokener = new ToonTokener(source);
+    Map<String, Object> object = tokener.nextObject();
+
+    @SuppressWarnings("unchecked")
+    List<Object> tags = (List<Object>) object.get("tags");
+    assertNotNull(tags);
+    assertEquals(List.of("admin", "ops", "dev,sec"), tags);
+  }
+
+  @Test
   void parsesArrayOfPrimitives() {
-    String source = String.join("\n", "tags[3]:", "  - admin", "  - ops", "  - dev");
+    String source = String.join("\n", "[3]:", "  - admin", "  - ops", "  - dev");
 
     ToonTokener tokener = new ToonTokener(source);
     List<Object> values = tokener.nextArray();
@@ -52,5 +65,57 @@ class ToonTokenerTest {
     assertNotNull(tags);
     assertEquals(List.of("admin", "ops"), tags);
     assertFalse(tokener.hasMoreValues());
+  }
+
+  @Test
+  void parsesTabularArray() {
+    String source =
+        String.join(
+            "\n",
+            "users[3]{id,name,role,active}:",
+            "  1,Alice,admin,true",
+            "  2,Bob,developer,true",
+            "  3,Charlie,designer,false");
+
+    ToonTokener tokener = new ToonTokener(source);
+    Map<String, Object> object = tokener.nextObject();
+
+    @SuppressWarnings("unchecked")
+    List<Map<String, Object>> users = (List<Map<String, Object>>) object.get("users");
+    assertNotNull(users);
+    assertEquals(3, users.size());
+    assertEquals(1L, users.get(0).get("id"));
+    assertEquals("Charlie", users.get(2).get("name"));
+    assertEquals(Boolean.FALSE, users.get(2).get("active"));
+  }
+
+  @Test
+  void parsesArrayWithInlineObjects() {
+    String source =
+        String.join(
+            "\n",
+            "[2]:",
+            "  - id: 1",
+            "    name: Ada",
+            "    skills[2]: python,ml",
+            "  - id: 2",
+            "    name: Bob");
+
+    ToonTokener tokener = new ToonTokener(source);
+    List<Object> items = tokener.nextArray();
+    assertEquals(2, items.size());
+
+    @SuppressWarnings("unchecked")
+    Map<String, Object> first = (Map<String, Object>) items.get(0);
+    assertEquals(1L, first.get("id"));
+    assertEquals("Ada", first.get("name"));
+    @SuppressWarnings("unchecked")
+    List<Object> skills = (List<Object>) first.get("skills");
+    assertNotNull(skills);
+    assertEquals(List.of("python", "ml"), skills);
+
+    @SuppressWarnings("unchecked")
+    Map<String, Object> second = (Map<String, Object>) items.get(1);
+    assertEquals("Bob", second.get("name"));
   }
 }
