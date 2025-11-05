@@ -3,7 +3,7 @@ Plan de trabajo para toon-java
 Este plan asume ejecución dentro de `./java` y sigue la arquitectura descrita en `PROJECT_OVERVIEW.md` y `ARCHITECTURE.md`. Cada bloque puede ejecutarse de forma incremental; marcar como completado cuando corresponda.
 
 1. Preparación del entorno
-   - Crear proyecto Gradle sin dependencias runtime; añadir plugin ANTLR y JUnit 5.
+   - Crear proyecto Gradle sin dependencias runtime; añadir carpetas standard de un proyecti Gradle. añadir plugin ANTLR y JUnit 5.
    - Configurar estructura de paquetes `org.toon` y directorio `org.toon.grammar` para código generado.
    - Integrar verificación de estilo básica (spotless/formatter opcional).
 
