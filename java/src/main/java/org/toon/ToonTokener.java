@@ -154,6 +154,11 @@ public final class ToonTokener {
       }
 
       if (header.isTabular()) {
+        if (line.indent == expectedIndent
+            && line.trimmed.indexOf(header.delimiter) < 0
+            && KEY_VALUE_PATTERN.matcher(line.trimmed).matches()) {
+          break;
+        }
         if (line.indent != expectedIndent) {
           throw error("Indentación inválida en fila tabular", line.lineNumber, line.indent + 1);
         }
