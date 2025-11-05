@@ -17,12 +17,12 @@ Este plan asume ejecución dentro de `./java` y sigue la arquitectura descrita e
    - Gestionar tracking de posición (línea/columna) para errores.
    - Añadir pruebas unitarias sobre el tokenizer usando snippets simples.
 
-4. Modelo de datos dinámico
+4. Modelo de datos dinámico (completado)
    - Implementar `ToonObject` (basado en `Map<String, Object>`) y `ToonArray` (basado en `List<Object>`), con API inspirada en `org.json`.
    - Añadir helpers `opt*`, `get*`, mutadores, y centinela `ToonNull` si se necesita.
    - Crear `ToonException` y asegurar que todo el modelo lo usa para reportar errores.
 
-5. Decoder TOON → JSON
+5. Decoder TOON → JSON (completado)
    - Implementar `ToonDecoder` que, usando `ToonTokener`, construya `ToonObject`/`ToonArray`.
    - Añadir conversión opcional a `JsonNode`/`Map` para integrarse con Jackson (sin añadir dependencia obligatoria).
    - Validar contra fixtures `tests/fixtures/decode`; crear tests parametrizados que lean los JSON de fixture.

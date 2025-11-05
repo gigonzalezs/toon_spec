@@ -468,7 +468,7 @@ public final class ToonTokener {
   }
 
   private static boolean isNumber(String text) {
-    return text.matches("-?\\d+(\\.\\d+)?([eE][+-]?\\d+)?");
+    return text.matches("-?(0|[1-9]\\d*)(\\.\\d+)?([eE][+-]?\\d+)?");
   }
 
   private static boolean isQuoted(String text) {
