@@ -165,6 +165,9 @@ public final class ToonTokener {
       }
 
       if (!line.trimmed.startsWith("-")) {
+        if (line.indent == expectedIndent) {
+          break;
+        }
         throw error(
             "Se esperaba elemento de array con prefijo '- '", line.lineNumber, line.indent + 1);
       }
@@ -184,9 +187,10 @@ public final class ToonTokener {
       if (nestedHeaderLine != null) {
         List<Object> nested = readArray(nestedHeaderLine, expectedIndent + INDENT_SIZE);
         if (nestedHeaderLine.header.key != null) {
-          Map<String, Object> wrapper = new LinkedHashMap<>();
-          wrapper.put(nestedHeaderLine.header.key, nested);
-          items.add(wrapper);
+          Map<String, Object> inline = new LinkedHashMap<>();
+          inline.put(nestedHeaderLine.header.key, nested);
+          readObjectEntries(inline, expectedIndent + INDENT_SIZE);
+          items.add(inline);
         } else {
           items.add(nested);
         }
